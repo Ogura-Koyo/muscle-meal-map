@@ -39,6 +39,7 @@ dependencies:
   geolocator: ^10.1.0       # For getting GPS location
   http: ^1.1.0              # For making API calls
   logger: ^2.1.0             # For logging
+  flutter_dotenv: ^5.1.0 # For environment variables
 
 dev_dependencies:
   flutter_test:

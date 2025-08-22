@@ -1,0 +1,44 @@
+# Name of the workflow
+name: Deploy Flutter Web App to GitHub Pages
+
+# Run this workflow on every push to the main branch
+on:
+  push:
+    branches: [ "main" ]
+
+# A single job called "build-and-deploy"
+jobs:
+  build-and-deploy:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checks out your repository's code so the job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Sets up the Flutter SDK environment
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.22.2' # Optional: lock to a specific version for stability
+
+      # 3. Gets Flutter dependencies
+      - name: Get dependencies
+        run: flutter pub get
+
+      # 4. This is the magic step: Replace the placeholder with the secret API key
+      - name: Replace API Key
+        run: sed -i 's|{{MAPS_API_KEY}}|${{ secrets.MAPS_API_KEY }}|g' web/index.html
+
+      # 5. Build the web app
+      - name: Build Flutter web
+        run: flutter build web --release --base-href /${{ github.event.repository.name }}/
+
+      # 6. Deploy the built app to the gh-pages branch
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web

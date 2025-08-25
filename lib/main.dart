@@ -246,7 +246,7 @@ class MapScreenState extends State<MapScreen> {
             Center(
               child: Container(
                 padding: const EdgeInsets.all(12),
-                color: Colors.black.withValues(alpha: 0.5),
+                color: Colors.black.withOpacity(0.5),
                 child: Text(
                   'Error: $_errorMessage',
                   style: const TextStyle(color: Colors.white),

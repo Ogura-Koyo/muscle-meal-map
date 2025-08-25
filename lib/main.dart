@@ -55,9 +55,11 @@ class MapScreen extends StatefulWidget {
 class MapScreenState extends State<MapScreen> {
   // State variables
   bool _isLoading = true;
+  double _selectedProtein = 20.0;
   String? _errorMessage;
   CameraPosition? _initialCameraPosition;
   Set<Marker> _markers = {};
+  Position? _currentPosition;
 
   @override
   void initState() {
@@ -70,6 +72,7 @@ class MapScreenState extends State<MapScreen> {
     try {
       final position = await _getCurrentLocation();
       setState(() {
+        _currentPosition = position;
         _initialCameraPosition = CameraPosition(
           target: LatLng(position.latitude, position.longitude),
           zoom: 15.0,
@@ -114,9 +117,14 @@ class MapScreenState extends State<MapScreen> {
   }
 
   /// 3. Fetch data from your backend API.
-  Future<void> _fetchRestaurants(double lat, double lng) async {
+  Future<void> _fetchRestaurants(double lat, double lng, {double minProtein = 0.0}) async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
-      final response = await http.get(Uri.parse('$apiEndpoint?lat=$lat&lng=$lng'));
+      final url = '$apiEndpoint?lat=$lat&lng=$lng&minProtein=$minProtein';
+      logger.i("Fetching from URL: $url");
+      final response = await http.get(Uri.parse(url));
 
       logger.i('API Response Status Code: ${response.statusCode}'); // Info level
       logger.d('API Response Body: ${response.body}'); // Debug level (more verbose)
@@ -148,6 +156,10 @@ class MapScreenState extends State<MapScreen> {
       setState(() {
         _errorMessage = "Failed to fetch data. Please check your connection.";
       });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -157,19 +169,92 @@ class MapScreenState extends State<MapScreen> {
       appBar: AppBar(
         title: const Text('Trainee Meal Finder'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(child: Text('Error: $_errorMessage'))
-              : _initialCameraPosition == null
-                  ? const Center(child: Text('Could not determine location.'))
-                  : GoogleMap(
-                      mapType: MapType.normal,
-                      initialCameraPosition: _initialCameraPosition!,
-                      markers: _markers,
-                      myLocationEnabled: true, // Shows the blue dot for user location
-                      myLocationButtonEnabled: true,
+      body: Stack(
+        children: [
+          // The Google Map is the base layer
+          _initialCameraPosition == null
+              ? const Center(child: Text('Determining location...'))
+              : GoogleMap(
+                  mapType: MapType.normal,
+                  initialCameraPosition: _initialCameraPosition!,
+                  markers: _markers,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  // Padding to prevent Google logo from being covered by our slider
+                  padding: const EdgeInsets.only(bottom: 150.0),
+                ),
+
+          // The new, always-visible slider control is placed on top
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Card(
+              margin: const EdgeInsets.all(16.0),
+              elevation: 8.0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'At least ${_selectedProtein.toStringAsFixed(0)}g of protein',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    Slider(
+                      value: _selectedProtein,
+                      min: 0,
+                      max: 100,
+                      divisions: 20,
+                      label: _selectedProtein.round().toString(),
+                      // This now only updates the text label
+                      onChanged: (double value) {
+                        setState(() {
+                          _selectedProtein = value;
+                        });
+                      },
+                      // onChangeEnd is no longer used for fetching
+                    ),
+                    // The "Apply Filter" button is now here
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(40), // Make button wider
+                      ),
+                      child: const Text('Apply Filter'),
+                      onPressed: () {
+                        if (_currentPosition != null) {
+                          _fetchRestaurants(
+                            _currentPosition!.latitude,
+                            _currentPosition!.longitude,
+                            minProtein: _selectedProtein, // Use the current slider value
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Loading and error indicators remain on top of everything
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+          if (_errorMessage != null)
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                color: Colors.black.withValues(alpha: 0.5),
+                child: Text(
+                  'Error: $_errorMessage',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

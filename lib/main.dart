@@ -189,49 +189,53 @@ class MapScreenState extends State<MapScreen> {
             left: 0,
             right: 0,
             bottom: 0,
-            child: Card(
-              margin: const EdgeInsets.all(16.0),
-              elevation: 8.0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'At least ${_selectedProtein.toStringAsFixed(0)}g of protein',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Slider(
-                      value: _selectedProtein,
-                      min: 0,
-                      max: 100,
-                      divisions: 20,
-                      label: _selectedProtein.round().toString(),
-                      // This now only updates the text label
-                      onChanged: (double value) {
-                        setState(() {
-                          _selectedProtein = value;
-                        });
-                      },
-                      // onChangeEnd is no longer used for fetching
-                    ),
-                    // The "Apply Filter" button is now here
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(40), // Make button wider
+            child: GestureDetector(
+              onVerticalDragStart: (_) {}, // Prevent map interaction when dragging
+              onHorizontalDragStart: (_) {},
+              child: Card(
+                margin: const EdgeInsets.all(16.0),
+                elevation: 8.0,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'At least ${_selectedProtein.toStringAsFixed(0)}g of protein',
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      child: const Text('Apply Filter'),
-                      onPressed: () {
-                        if (_currentPosition != null) {
-                          _fetchRestaurants(
-                            _currentPosition!.latitude,
-                            _currentPosition!.longitude,
-                            minProtein: _selectedProtein, // Use the current slider value
-                          );
-                        }
-                      },
-                    ),
-                  ],
+                      Slider(
+                        value: _selectedProtein,
+                        min: 0,
+                        max: 100,
+                        divisions: 20,
+                        label: _selectedProtein.round().toString(),
+                        // This now only updates the text label
+                        onChanged: (double value) {
+                          setState(() {
+                            _selectedProtein = value;
+                          });
+                        },
+                        // onChangeEnd is no longer used for fetching
+                      ),
+                      // The "Apply Filter" button is now here
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(40), // Make button wider
+                        ),
+                        child: const Text('Apply Filter'),
+                        onPressed: () {
+                          if (_currentPosition != null) {
+                            _fetchRestaurants(
+                              _currentPosition!.latitude,
+                              _currentPosition!.longitude,
+                              minProtein: _selectedProtein, // Use the current slider value
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

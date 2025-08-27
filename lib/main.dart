@@ -4,6 +4,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
+import 'dart:ui' show ImageByteFormat, PictureRecorder, Canvas, Paint, Offset, Rect;
 
 const String apiEndpoint = "https://asia-northeast1-muscle-meal.cloudfunctions.net/getRestaurants";
 
@@ -60,11 +62,63 @@ class MapScreenState extends State<MapScreen> {
   CameraPosition? _initialCameraPosition;
   Set<Marker> _markers = {};
   Position? _currentPosition;
+  GoogleMapController? _mapController;
+  BitmapDescriptor? _myLocIcon;
+  Set<Circle> _circles = {};
+  static const MarkerId _myLocationMarkerId = MarkerId('me');
+
+  void _showMyLocationDot(LatLng pos) {
+    setState(() {
+      _markers = {
+        // keep other markers
+        ..._markers.where((m) => m.markerId != _myLocationMarkerId),
+        Marker(
+          markerId: _myLocationMarkerId,
+          position: pos,
+          icon: _myLocIcon ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+          anchor: const Offset(0.5, 0.5),
+        ),
+      };
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _determinePositionAndFetchRestaurants();
+    _createMyLocationIcon();
+  }
+  
+  Future<void> _createMyLocationIcon() async {
+    // logical size of the marker bitmap
+    const double size = 48.0;
+
+    final recorder = PictureRecorder();
+    final canvas = Canvas(recorder);
+    final paintFill = Paint()..color = const Color(0xFF1E88E5); // blue 600-ish
+    final paintWhite = Paint()..color = const Color(0xFFFFFFFF);
+
+    final center = Offset(size / 2, size / 2);
+    final outerR = size * 0.32;  // blue circle
+    final strokeR = outerR + 2;  // white ring
+    final innerR = outerR * 0.35; // small white center dot
+
+    // Transparent background
+    canvas.drawRect(Rect.fromLTWH(0, 0, size, size), Paint()..color = const Color(0x00000000));
+
+    // white outer ring
+    canvas.drawCircle(center, strokeR, paintWhite);
+    // blue main dot
+    canvas.drawCircle(center, outerR, paintFill);
+    // small white center dot
+    canvas.drawCircle(center, innerR, paintWhite);
+
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(size.toInt(), size.toInt());
+    final bytes = await img.toByteData(format: ImageByteFormat.png);
+    if (bytes == null) return;
+
+    _myLocIcon = BitmapDescriptor.fromBytes(bytes.buffer.asUint8List());
   }
 
   /// 1. Main function to orchestrate location and data fetching.
@@ -75,9 +129,10 @@ class MapScreenState extends State<MapScreen> {
         _currentPosition = position;
         _initialCameraPosition = CameraPosition(
           target: LatLng(position.latitude, position.longitude),
-          zoom: 15.0,
+          zoom: 17.0,
         );
       });
+      _showMyLocationDot(LatLng(position.latitude, position.longitude));
       await _fetchRestaurants(position.latitude, position.longitude);
     } catch (e) {
       logger.e("Error in location/fetching orchestration: $e");
@@ -175,23 +230,48 @@ class MapScreenState extends State<MapScreen> {
           _initialCameraPosition == null
               ? const Center(child: Text('Determining location...'))
               : GoogleMap(
+                  onMapCreated: (c) => _mapController = c,
                   mapType: MapType.normal,
                   initialCameraPosition: _initialCameraPosition!,
                   markers: _markers,
+                  circles: _circles,
                   myLocationEnabled: true,
                   myLocationButtonEnabled: true,
                   // Padding to prevent Google logo from being covered by our slider
-                  padding: const EdgeInsets.only(bottom: 150.0),
+                  padding: const EdgeInsets.only(bottom: 200.0),
                 ),
+          
+          Positioned(
+            right: 16,
+            bottom: 220, // keep it above your slider (adjust as you like)
+            child: Material(
+              elevation: 2,
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: IconButton(
+                icon: const Icon(Icons.my_location),
+                onPressed: () async {
+                  try {
+                    final pos = await _getCurrentLocation();
+                    final me = LatLng(pos.latitude, pos.longitude);
+                    _showMyLocationDot(me);
+                    _mapController?.animateCamera(
+                      CameraUpdate.newLatLng(me),
+                    );
+                  } catch (_) {
+                    // no-op or show a SnackBar if you want
+                  }
+                },
+              ),
+            ),
+          ),
 
           // The new, always-visible slider control is placed on top
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            child: GestureDetector(
-              onVerticalDragStart: (_) {}, // Prevent map interaction when dragging
-              onHorizontalDragStart: (_) {},
+            child: PointerInterceptor( // Prevents map interactions when interacting with the slider
               child: Card(
                 margin: const EdgeInsets.all(16.0),
                 elevation: 8.0,

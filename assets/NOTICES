@@ -7095,6 +7095,10 @@ google_maps_flutter_android
 google_maps_flutter_ios
 google_maps_flutter_platform_interface
 plugin_platform_interface
+pointer_interceptor
+pointer_interceptor_ios
+pointer_interceptor_platform_interface
+pointer_interceptor_web
 
 Copyright 2013 The Flutter Authors. All rights reserved.
 

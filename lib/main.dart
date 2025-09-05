@@ -239,6 +239,7 @@ class MapScreenState extends State<MapScreen> {
                   myLocationButtonEnabled: true,
                   // Padding to prevent Google logo from being covered by our slider
                   padding: const EdgeInsets.only(bottom: 200.0),
+                  cloudMapId: 'b41109ea305c43e77dcef765',
                 ),
           
           Positioned(

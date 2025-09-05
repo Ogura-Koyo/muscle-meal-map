@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'dart:ui' show ImageByteFormat, PictureRecorder, Canvas, Paint, Offset, Rect;
+import 'dart:async';
 
 const String apiEndpoint = "https://asia-northeast1-muscle-meal.cloudfunctions.net/getRestaurants";
 
@@ -56,6 +57,7 @@ class MapScreen extends StatefulWidget {
 
 class MapScreenState extends State<MapScreen> {
   // State variables
+  StreamSubscription<Position>? _posSub;
   bool _isLoading = true;
   double _selectedProtein = 20.0;
   String? _errorMessage;
@@ -66,27 +68,83 @@ class MapScreenState extends State<MapScreen> {
   BitmapDescriptor? _myLocIcon;
   Set<Circle> _circles = {};
   static const MarkerId _myLocationMarkerId = MarkerId('me');
+  // Unique ID for the user's radius circle
+  static const CircleId _myLocationCircleId = CircleId('me_radius');
 
-  void _showMyLocationDot(LatLng pos) {
-    setState(() {
-      _markers = {
-        // keep other markers
-        ..._markers.where((m) => m.markerId != _myLocationMarkerId),
-        Marker(
-          markerId: _myLocationMarkerId,
-          position: pos,
-          icon: _myLocIcon ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-          anchor: const Offset(0.5, 0.5),
-        ),
-      };
-    });
+  Future<void> _startPositionStream() async {
+  // Permissions (Web needs user gesture/https; this will request when allowed)
+  LocationPermission perm = await Geolocator.checkPermission();
+  if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+    perm = await Geolocator.requestPermission();
   }
+
+  final enabled = await Geolocator.isLocationServiceEnabled();
+  if (!enabled) {
+    // TODO: show a snackbar/toast for location services off
+    return;
+  }
+
+  const locationSettings = LocationSettings(
+    accuracy: LocationAccuracy.best, // or high to save battery
+    distanceFilter: 5,               // meters between updates
+  );
+
+  // Ensure only one stream is active
+  await _posSub?.cancel();
+  _posSub = Geolocator.getPositionStream(locationSettings: locationSettings)
+      .listen((pos) {
+        final p = LatLng(pos.latitude, pos.longitude);
+        _updateMyLocationMarker(p);
+        // Optional: follow the user
+        // _mapController?.animateCamera(CameraUpdate.newLatLng(p));
+      });
+}
+
+void _updateMyLocationMarker(LatLng latLng) {
+  final meId = _myLocationMarkerId;
+
+  // If you have a custom icon in _myLocIcon, use it; else default marker
+  final meMarker = Marker(
+    markerId: meId,
+    position: latLng,
+    zIndex: 9999,
+    anchor: const Offset(0.5, 0.5),
+    icon: _myLocIcon ?? BitmapDescriptor.defaultMarker,
+    infoWindow: const InfoWindow(title: 'Your location'),
+  );
+
+  // 500-meter grey circle around the user
+  final meCircle = Circle(
+    circleId: _myLocationCircleId,
+    center: latLng,
+    radius: 250.0,                              // meters
+    strokeWidth: 1,
+    strokeColor: Colors.grey.withOpacity(0.7),
+    fillColor: Colors.grey.withOpacity(0.18),   // subtle fill
+    zIndex: 9998,
+  );
+
+  setState(() {
+    // IMPORTANT: do not overwrite _markers; update/replace just the 'me' marker
+    _markers
+      ..removeWhere((m) => m.markerId == meId)
+      ..add(meMarker);
+    _circles = { meCircle };
+  });
+}
 
   @override
   void initState() {
     super.initState();
     _determinePositionAndFetchRestaurants();
     _createMyLocationIcon();
+    _startPositionStream();
+  }
+
+  @override
+  void dispose() {
+    _posSub?.cancel();   // stop location updates when widget is destroyed
+    super.dispose();
   }
   
   Future<void> _createMyLocationIcon() async {
@@ -132,7 +190,7 @@ class MapScreenState extends State<MapScreen> {
           zoom: 17.0,
         );
       });
-      _showMyLocationDot(LatLng(position.latitude, position.longitude));
+      _updateMyLocationMarker(LatLng(position.latitude, position.longitude));
       await _fetchRestaurants(position.latitude, position.longitude);
     } catch (e) {
       logger.e("Error in location/fetching orchestration: $e");
@@ -192,7 +250,7 @@ class MapScreenState extends State<MapScreen> {
         final restaurants = data.map((json) => Restaurant.fromJson(json)).toList();
 
         setState(() {
-          _markers = restaurants.map((restaurant) {
+          final restaurantMarkers = restaurants.map((restaurant) {
             return Marker(
               markerId: MarkerId(restaurant.name),
               position: restaurant.location,
@@ -202,6 +260,13 @@ class MapScreenState extends State<MapScreen> {
               ),
             );
           }).toSet();
+          _markers = {
+            ..._markers.where((m) => m.markerId == _myLocationMarkerId), // keep 'me' marker
+            ...restaurantMarkers,
+          };
+          _circles = {
+            ..._circles.where((c) => c.circleId == _myLocationCircleId), // keep 'me' circle
+          };
         });
       } else {
         throw Exception('Failed to load restaurants');
@@ -254,8 +319,8 @@ class MapScreenState extends State<MapScreen> {
                 onPressed: () async {
                   try {
                     final pos = await _getCurrentLocation();
-                    final me = LatLng(pos.latitude, pos.longitude);
-                    _showMyLocationDot(me);
+                    final me = LatLng(35.707508, 139.760599); // TODO: replace with LatLng(pos.latitude, pos.longitude); to get actual location
+                    _updateMyLocationMarker(me);
                     _mapController?.animateCamera(
                       CameraUpdate.newLatLng(me),
                     );

@@ -149,7 +149,7 @@ void _updateMyLocationMarker(LatLng latLng) {
   
   Future<void> _createMyLocationIcon() async {
     // logical size of the marker bitmap
-    const double size = 48.0;
+    const double size = 30.0;
 
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
@@ -319,7 +319,7 @@ void _updateMyLocationMarker(LatLng latLng) {
                 onPressed: () async {
                   try {
                     final pos = await _getCurrentLocation();
-                    final me = LatLng(35.707508, 139.760599); // TODO: replace with LatLng(pos.latitude, pos.longitude); to get actual location
+                    final me = LatLng(pos.latitude, pos.longitude); // TODO: replace with LatLng(pos.latitude, pos.longitude); to get actual location
                     _updateMyLocationMarker(me);
                     _mapController?.animateCamera(
                       CameraUpdate.newLatLng(me),

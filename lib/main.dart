@@ -117,7 +117,7 @@ void _updateMyLocationMarker(LatLng latLng) {
   final meCircle = Circle(
     circleId: _myLocationCircleId,
     center: latLng,
-    radius: 250.0,                              // meters
+    radius: 200.0,                              // meters
     strokeWidth: 1,
     strokeColor: Colors.grey.withOpacity(0.7),
     fillColor: Colors.grey.withOpacity(0.18),   // subtle fill
@@ -230,12 +230,12 @@ void _updateMyLocationMarker(LatLng latLng) {
   }
 
   /// 3. Fetch data from your backend API.
-  Future<void> _fetchRestaurants(double lat, double lng, {double minProtein = 0.0}) async {
+  Future<void> _fetchRestaurants(double lat, double lng, {double minProtein = 0.0, double radius = 0.2}) async {
     setState(() {
       _isLoading = true;
     });
     try {
-      final url = '$apiEndpoint?lat=$lat&lng=$lng&minProtein=$minProtein';
+      final url = '$apiEndpoint?lat=$lat&lng=$lng&minProtein=$minProtein&radius=$radius';
       logger.i("Fetching from URL: $url");
       final response = await http.get(Uri.parse(url));
 

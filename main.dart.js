@@ -67945,7 +67945,7 @@ case 1:return A.D(q,r)}})
 return A.E($async$kL,r)},
 yK(a){var s=null,r=this.Q,q=A.aeq(1,B.acq,s,!1,!1,!1,r==null?B.lB:r,B.GJ,B.ki,s,s,s,s,a,0,!0,9999)
 r=A.a9(B.c.aj(178.5),158,158,158)
-this.aB(new A.Yn(this,B.ki,q,new A.dJ(B.m3,!1,A.a9(46,158,158,158),a,250,r,1,!0,9998,s)))},
+this.aB(new A.Yn(this,B.ki,q,new A.dJ(B.m3,!1,A.a9(46,158,158,158),a,200,r,1,!0,9998,s)))},
 bb(){var s=this
 s.bt()
 s.nR()
@@ -68036,18 +68036,20 @@ s=1
 break
 case 1:return A.D(q,r)}})
 return A.E($async$jh,r)},
-nV(a,b,c){return this.W5(a,b,c)},
+nV(a,b,c){var s=0.2
+return this.W5(a,b,c)},
 W4(a,b){return this.nV(a,b,0)},
-W5(a,b,c){var s=0,r=A.F(t.H),q=1,p,o=[],n=this,m,l,k,j,i,h,g,f,e
-var $async$nV=A.B(function(d,a0){if(d===1){p=a0
-s=q}while(true)switch(s){case 0:n.aB(new A.Yg(n))
+W5(a,b,c){var s=0,r=A.F(t.H),q=1,p,o=[],n=this,m,l,k,j,i,h,g,f,e,d
+var $async$nV=A.B(function(a0,a1){if(a0===1){p=a1
+s=q}while(true)switch(s){case 0:e=0.2
+n.aB(new A.Yg(n))
 q=3
-m="https://asia-northeast1-muscle-meal.cloudfunctions.net/getRestaurants?lat="+A.k(a)+"&lng="+A.k(b)+"&minProtein="+A.k(c)
+m="https://asia-northeast1-muscle-meal.cloudfunctions.net/getRestaurants?lat="+A.k(a)+"&lng="+A.k(b)+"&minProtein="+A.k(c)+"&radius="+A.k(e)
 h=$.adf()
 h.Ar("Fetching from URL: "+A.k(m))
 s=6
 return A.K(A.aAs(A.en(m)),$async$nV)
-case 6:l=a0
+case 6:l=a1
 h.Ar("API Response Status Code: "+l.b)
 g=l
 h.AD(B.mN,"API Response Body: "+A.amT(A.alz(g.e)).d6(0,g.w),null,null,null)
@@ -68061,8 +68063,8 @@ throw A.d(h)}o.push(5)
 s=4
 break
 case 3:q=2
-e=p
-i=A.ag(e)
+d=p
+i=A.ag(d)
 $.adf().Kh(0,"Error fetching restaurants: "+A.k(i))
 n.aB(new A.Yj(n))
 o.push(5)
